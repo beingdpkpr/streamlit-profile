@@ -16,7 +16,7 @@ from forms.contact import contact_form
 left_column, right_column = st.columns([1, 3])
 
 
-image_path = "src/assets/IMG.JPG"
+image_path = "src/assets/img2.jpg"
 resume_path = "src/assets/resume.pdf"
 
 
