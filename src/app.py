@@ -1,4 +1,5 @@
 import streamlit as st
+from os import path, getcwd
 
 
 st.set_page_config(layout="wide", initial_sidebar_state="auto")
@@ -56,7 +57,9 @@ pg = st.navigation(
     },
 )
 
-st.logo("assets/img2.jpg")
+print(getcwd())
+logo_path = path.join("assets", "img2.jpg")
+st.logo(logo_path)
 st.sidebar.text("Made with ❤️ by Deepak Prasad")
 
 # Run Navigation
