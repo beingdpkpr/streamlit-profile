@@ -57,8 +57,9 @@ pg = st.navigation(
     },
 )
 
-print(getcwd())
-logo_path = path.join("assets", "img2.jpg")
+# print(getcwd())
+# print(path.isfile(path.join(getcwd(), "assets", "img2.jpg")))
+logo_path = path.join("src", "assets", "img2.jpg")
 st.logo(logo_path)
 st.sidebar.text("Made with ❤️ by Deepak Prasad")
 

@@ -16,8 +16,8 @@ from forms.contact import contact_form
 left_column, right_column = st.columns([1, 3])
 
 
-image_path = "assets/IMG.JPG"
-resume_path = "assets/resume.pdf"
+image_path = "src/assets/IMG.JPG"
+resume_path = "src/assets/resume.pdf"
 
 
 @st.dialog("Contact Me")
