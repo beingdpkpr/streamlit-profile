@@ -27,7 +27,7 @@ def show_contact_form():
 
 with left_column:
     if path.exists(image_path):
-        st.image(image_path, width=230, use_container_width=True)
+        st.image(image_path, width=230, use_container_width=False)
 
     else:
         st.error(f"Image not found at {image_path}. Please check the path.")

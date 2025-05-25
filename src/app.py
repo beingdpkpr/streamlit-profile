@@ -34,12 +34,12 @@ certificates = st.Page(
     page="views/certificates.py",
 )
 
-# chatbot = st.Page(
-#     title="Chatbot",
-#     icon="💬",
-#     page="views/chatbot.py",
-# )
-#
+chatbot = st.Page(
+    title="Chatbot",
+    icon="💬",
+    page="views/chatbot.py",
+)
+
 # qpa = st.Page(
 #     title="Query Performance Analyzer",
 #     icon="📊",
@@ -53,7 +53,7 @@ certificates = st.Page(
 pg = st.navigation(
     {
         "Info": [home, education, work, skills, certificates],
-        # "Projects": [chatbot, qpa],
+        "Projects": [chatbot],
     },
 )
 
