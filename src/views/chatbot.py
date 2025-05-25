@@ -4,7 +4,7 @@ import os
 
 st.title("💬 Chatbot")
 # Configure API
-api_key = "AIzaSyBBXTEx22zK3AxDVmnG3Cxc3KodxvorAyI"
+api_key = os.getenv("GOOGLE_GENERATIVE_AI_API_KEY")
 if not api_key:
     st.error("❌ Gemini API key not found in environment.")
     st.stop()
