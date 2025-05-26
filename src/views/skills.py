@@ -60,6 +60,7 @@ professional_skills = {
     "SVN, GIT": 4,
     "Architecture & Design": 4,
     "o9 Platform & Solver": 4,
+    "Streamlit": 3,
     "Supply Chain Management": 3,
     "Docker": 3,
     "Java": 3,
