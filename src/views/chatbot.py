@@ -13,7 +13,8 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 # Load the model (no need to specify API version)
-model = genai.GenerativeModel()
+# model = genai.GenerativeModel()
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 if "chat" not in st.session_state:
     st.session_state.chat = model.start_chat(history=[])

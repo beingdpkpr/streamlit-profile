@@ -58,6 +58,7 @@ professional_skills = {
     "HTML, CSS & JavaScript/TypeScript": 4,
     "Angular & Bootstrap": 4,
     "SVN, GIT": 4,
+    "SDLC": 4,
     "Architecture & Design": 4,
     "o9 Platform & Solver": 4,
     "Streamlit": 3,

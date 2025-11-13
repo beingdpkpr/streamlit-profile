@@ -34,17 +34,24 @@ certificates = st.Page(
     page="views/certificates.py",
 )
 
-chatbot = st.Page(
-    title="Chatbot",
-    icon="💬",
-    page="views/chatbot.py",
-)
+# chatbot = st.Page(
+#     title="Chatbot",
+#     icon="💬",
+#     page="views/chatbot.py",
+# )
 
 # qpa = st.Page(
 #     title="Query Performance Analyzer",
 #     icon="📊",
 #     page="views/qpa.py",
 # )
+
+hierarchy_detector = st.Page(
+    title="Hierarchy Detector",
+    icon="📊",
+    page="views/hierarchy-detector.py",
+)
+
 
 # Navigation Setup
 # pg = st.navigation(pages=[home, education, work, skills, chatbot])
@@ -53,7 +60,8 @@ chatbot = st.Page(
 pg = st.navigation(
     {
         "Info": [home, education, work, skills, certificates],
-        "Projects": [chatbot],
+        # "Projects": [chatbot],
+        "Projects": [hierarchy_detector],
     },
 )
 
@@ -61,7 +69,7 @@ pg = st.navigation(
 # print(path.isfile(path.join(getcwd(), "assets", "img2.jpg")))
 logo_path = path.join("src", "assets", "img2.jpg")
 st.logo(logo_path)
-st.sidebar.text("Made with ❤️ by Deepak Prasad")
+st.sidebar.text("Created by Deepak Prasad")
 
 # Run Navigation
 pg.run()
