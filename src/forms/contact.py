@@ -1,7 +1,10 @@
 import streamlit as st
 from re import match
 from yagmail import SMTP
-from variables import email_contact, app_pass, email
+from variables import email_contact
+
+email_user = st.secrets["email"]["USER"]
+email_pass = st.secrets["email"]["PASS"]
 
 
 def is_valid_email(_email):
@@ -41,8 +44,8 @@ def contact_form():
             Message: {message}
         """
 
-        yag = SMTP(email_contact, app_pass)
-        yag.send(email, f"{name} tried reaching you!", data)
+        yag = SMTP(email_contact, email_pass)
+        yag.send(email_user, f"{name} tried reaching you!", data)
 
         st.success(
             "Your message has been sent successfully! Thank you for reaching out.",
