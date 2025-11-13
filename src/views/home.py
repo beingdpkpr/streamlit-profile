@@ -5,7 +5,6 @@ from variables import (
     title,
     profile_details,
     phone,
-    email,
     linkedin,
     location,
     whatsapp,
@@ -40,7 +39,7 @@ with left_column:
             <br>
             🟢 <i>{whatsapp}</i>
             <br>
-            ✉️ <i>{email}</i>
+            ✉️ <i>deepak.prasad.ai@gmail.com</i>
             <br>
             📍 {location}
             <br>
