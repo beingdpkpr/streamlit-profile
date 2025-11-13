@@ -3,7 +3,7 @@ from itertools import combinations
 import streamlit as st
 
 # --- Streamlit Page Setup ---
-st.set_page_config(page_title="Hierarchy Detector", page_icon="📊", layout="wide")
+# st.set_page_config(page_title="Hierarchy Detector", page_icon="📊", layout="wide")
 
 st.title("📊 Hierarchy Detector")
 st.caption(
