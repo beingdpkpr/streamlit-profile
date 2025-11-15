@@ -54,7 +54,7 @@ hierarchy_detector = st.Page(
 
 youtube_downloader = st.Page(
     title="Youtube Downloader",
-    icon="📜",
+    icon="📹",
     page="views/youtube-downloader.py",
 )
 

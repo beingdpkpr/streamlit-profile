@@ -6,7 +6,7 @@ from shutil import which
 import zipfile
 import platform
 
-st.title("📜 Youtube Downloader")
+st.title("📹 Youtube Downloader")
 
 
 class YouTubeDownloader:
