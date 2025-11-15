@@ -2,7 +2,9 @@ import streamlit as st
 import yt_dlp
 import os
 from pathlib import Path
+from shutil import which
 import zipfile
+import platform
 
 st.title("📜 Youtube Downloader")
 
@@ -12,29 +14,19 @@ class YouTubeDownloader:
         """Initialize downloader with a download directory."""
         self.download_path = Path(download_path)
         self.download_path.mkdir(exist_ok=True)
+        BASE_DIR = Path(__file__).resolve().parent
+        self.BUNDLED_FFMPEG = BASE_DIR / "ffmpeg" / "bin"
+        self.BUNDLED_FFMPEG = f"C:\ffmpeg\bin"
 
-    def progress_hook(self, d, _progress_bar=None, _status_text=None):
-        """Hook for download progress."""
-        if d["status"] == "downloading":
-            if _progress_bar and "downloaded_bytes" in d and "total_bytes" in d:
-                percent = d["downloaded_bytes"] / d["total_bytes"]
-                _progress_bar.progress(percent)
-            if _status_text:
-                _status_text.text(
-                    f"Downloading: {d.get('_percent_str', 'N/A')} at {d.get('_speed_str', 'N/A')}"
-                )
-        elif d["status"] == "finished":
-            if _status_text:
-                _status_text.text("Download complete, processing...")
-
-    def download_video(self, _url, _quality="best", bar=None, status=None):
-
+    def download_video(self, _url, _quality="best", _progress=None, _status=None):
         def hook(d):
             percentage = d["downloaded_bytes"] / d["total_bytes"]
-            if bar is not None:
-                bar.progress(percentage)
-            if status:
-                status.info(f"{d['status']} - {percentage * 100:.2f}%")
+            if _progress:
+                _progress.progress(percentage)
+            if _status:
+                file_name = d["filename"]
+                file_name = (file_name[:30] + "…") if len(file_name) > 30 else file_name
+                _status.info(f"{d['status']}: {file_name} - {percentage * 100:.0f}%")
 
         ydl_opts = {
             "format": (
@@ -58,24 +50,26 @@ class YouTubeDownloader:
         except Exception as e:
             return False, str(e), None
 
-    def download_audio(self, url, format="mp3", bar=None, status=None):
+    def download_audio(self, _url, _format="mp3", _progress=None, _status=None):
         """Download only audio from video."""
 
         def hook(d):
             percentage = d["downloaded_bytes"] / d["total_bytes"]
-            if bar is not None:
-                bar.progress(percentage)
-            if status:
-                status.info(f"{d['status']} - {percentage * 100:.2f}%")
+            if _progress:
+                _progress.progress(percentage)
+            if _status:
+                file_name = d["filename"]
+                file_name = (file_name[:30] + "…") if len(file_name) > 30 else file_name
+                _status.info(f"{d['status']}: {file_name} - {percentage * 100:.0f}%")
 
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": str(self.download_path / "%(title)s.%(ext)s"),
-            "ffmpeg_location": r"C:\ffmpeg\bin",  # <-- adjust if needed
+            "ffmpeg_location": self.BUNDLED_FFMPEG,
             "postprocessors": [
                 {
                     "key": "FFmpegExtractAudio",
-                    "preferredcodec": format,
+                    "preferredcodec": _format,
                     "preferredquality": "192",
                 }
             ],
@@ -84,23 +78,38 @@ class YouTubeDownloader:
         try:
             # print(f"Downloading Audio: {self.download_path}")
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = str(self.download_path / f"{info['title']}.{format}")
+                info = ydl.extract_info(_url, download=True)
+                filename = str(self.download_path / f"{info['title']}.{_format}")
                 return True, info["title"], filename
         except Exception as e:
             return False, str(e), None
 
     def download_playlist(
-        self, url, download_type="video", quality="best", audio_format="mp3"
+        self,
+        _url,
+        _type="video",
+        _quality="best",
+        _audio_format="mp3",
+        _progress=None,
+        _status=None,
     ):
-        ffmpeg_path = r"C:\ffmpeg\bin"
         """Download entire playlist."""
-        if download_type == "video":
+
+        def hook(d):
+            percentage = d["downloaded_bytes"] / d["total_bytes"]
+            if _progress:
+                _progress.progress(percentage)
+            if _status:
+                file_name = d["filename"]
+                file_name = (file_name[:30] + "…") if len(file_name) > 30 else file_name
+                _status.info(f"{d['status']}: {file_name} - {percentage * 100:.0f}%")
+
+        if _type == "video":
             ydl_opts = {
                 "format": (
                     "bestvideo+bestaudio/best"
-                    if quality == "best"
-                    else f"bestvideo[height<={quality[:-1]}]+bestaudio/best"
+                    if _quality == "best"
+                    else f"bestvideo[height<={_quality[:-1]}]+bestaudio/best"
                 ),
                 "outtmpl": str(
                     self.download_path
@@ -108,6 +117,7 @@ class YouTubeDownloader:
                 ),
                 "merge_output_format": "mp4",
                 "ignoreerrors": True,  # Continue on errors
+                "progress_hooks": [hook],
             }
         else:
             ydl_opts = {
@@ -116,20 +126,21 @@ class YouTubeDownloader:
                     self.download_path
                     / "%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
                 ),
-                "ffmpeg_location": ffmpeg_path,
+                "ffmpeg_location": self.BUNDLED_FFMPEG,
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
-                        "preferredcodec": audio_format,
+                        "preferredcodec": _audio_format,
                         "preferredquality": "192",
                     }
                 ],
                 "ignoreerrors": True,
+                "progress_hooks": [hook],
             }
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+                info = ydl.extract_info(_url, download=True)
                 playlist_title = info.get("title", "playlist")
                 video_count = len(info.get("entries", []))
                 playlist_folder = self.download_path / playlist_title
@@ -156,6 +167,7 @@ with col1:
     content_type = st.radio(
         "Content Type",
         ["Single Video", "Playlist"],
+        # ["Playlist", "Single Video"],
         help="Choose to download a single video or entire playlist",
     )
 with col2:
@@ -219,7 +231,9 @@ download_col1, download_col2, download_col3 = st.columns([1, 1, 1])
 with download_col2:
     if content_type == "Single Video":
         download_btn = st.button(
-            f"⬇️ Download {download_type}", type="primary", use_container_width=True
+            f"⬇️ Download {download_type}",
+            type="primary",
+            use_container_width=True,
         )
     else:
         download_btn = st.button(
@@ -235,20 +249,23 @@ if download_btn:
         if content_type == "Single Video":
             progress_bar = st.progress(0)
             status_text = st.empty()
-
-            def update_progress(pct, message):
-                progress_bar.progress(pct / 100)  # correct scale
-                status_text.text(message)
-
+            # Remove List from URL
+            url = url.split("&list")[0]
             status_text.text("Starting download...")
 
             if download_type == "Video":
                 success, result, filename = downloader.download_video(
-                    url, quality, progress_bar, status_text
+                    _url=url,
+                    _quality=quality,
+                    _progress=progress_bar,
+                    _status=status_text,
                 )
             else:
                 success, result, filename = downloader.download_audio(
-                    url, audio_format, progress_bar, status_text
+                    _url=url,
+                    _format=audio_format,
+                    _progress=progress_bar,
+                    _status=status_text,
                 )
 
             progress_bar.progress(100)
@@ -271,25 +288,32 @@ if download_btn:
                 status_text.empty()
                 st.error(f"❌ Download failed: {result}")
         else:
+            header_status = st.empty()
+            header_status.text("Downloading Entire Playlist... This may take a while.")
+
             # Playlist download
             progress_bar = st.progress(0)
             status_text = st.empty()
 
-            status_text.text("Starting playlist download... This may take a while.")
-            progress_bar.progress(10)
-
             if download_type == "Video":
                 success, result, count, folder = downloader.download_playlist(
-                    url, "video", quality
+                    _url=url,
+                    _type="video",
+                    _quality=quality,
+                    _progress=progress_bar,
+                    _status=status_text,
                 )
             else:
                 success, result, count, folder = downloader.download_playlist(
-                    url, "audio", audio_format=audio_format
+                    _url=url,
+                    _type="audio",
+                    _audio_format=audio_format,
+                    _progress=progress_bar,
+                    _status=status_text,
                 )
 
-            progress_bar.progress(90)
-
             if success:
+                header_status.empty()
                 progress_bar.progress(100)
                 status_text.empty()
                 st.success(f"✅ Successfully downloaded playlist: **{result}**")

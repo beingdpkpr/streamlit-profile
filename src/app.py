@@ -52,6 +52,12 @@ hierarchy_detector = st.Page(
     page="views/hierarchy-detector.py",
 )
 
+youtube_downloader = st.Page(
+    title="Youtube Downloader",
+    icon="📜",
+    page="views/youtube-downloader.py",
+)
+
 
 # Navigation Setup
 # pg = st.navigation(pages=[home, education, work, skills, chatbot])
@@ -61,7 +67,7 @@ pg = st.navigation(
     {
         "Info": [home, education, work, skills, certificates],
         # "Projects": [chatbot],
-        "Projects": [hierarchy_detector, chatbot],
+        "Projects": [hierarchy_detector, chatbot, youtube_downloader],
     },
 )
 
