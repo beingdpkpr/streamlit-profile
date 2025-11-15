@@ -67,7 +67,7 @@ pg = st.navigation(
     {
         "Info": [home, education, work, skills, certificates],
         # "Projects": [chatbot],
-        "Projects": [hierarchy_detector, chatbot, youtube_downloader],
+        "Projects": [hierarchy_detector, chatbot],
     },
 )
 
