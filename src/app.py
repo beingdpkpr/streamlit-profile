@@ -58,10 +58,6 @@ youtube_downloader = st.Page(
     page="views/youtube-downloader.py",
 )
 
-
-# Navigation Setup
-# pg = st.navigation(pages=[home, education, work, skills, chatbot])
-
 # Navigation Configuration
 pg = st.navigation(
     {
@@ -71,8 +67,6 @@ pg = st.navigation(
     },
 )
 
-# print(getcwd())
-# print(path.isfile(path.join(getcwd(), "assets", "img2.jpg")))
 logo_path = path.join("src", "assets", "img2.jpg")
 st.logo(logo_path)
 st.sidebar.text("Created by Deepak Prasad")
