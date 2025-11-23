@@ -3,7 +3,7 @@ import re
 from pandas import read_csv, DataFrame, options, to_datetime, isna
 from statistics import mean
 
-st.title("🫧 Log Parser")
+st.title("🫧 Log Parser For Plugins")
 
 
 options.mode.chained_assignment = None
