@@ -80,7 +80,7 @@ def extract_chains(adjacency):
 
 
 # --- File Handling and Output ---
-if uploaded_file is not None:
+if uploaded_file:
     try:
         with st.spinner("🔍 Analyzing relationships..."):
             df = read_csv(uploaded_file)

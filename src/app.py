@@ -58,12 +58,29 @@ youtube_downloader = st.Page(
     page="views/youtube-downloader.py",
 )
 
+audiobook = st.Page(
+    title="Audiobook Creator",
+    icon="📘",
+    page="views/audiobook-creator.py",
+)
+
+log_parser = st.Page(
+    title="Log Parser",
+    icon="🫧",
+    page="views/log-parser.py",
+)
+
 # Navigation Configuration
 pg = st.navigation(
     {
         "Info": [home, education, work, skills, certificates],
-        # "Projects": [chatbot],
-        "Projects": [hierarchy_detector, chatbot],
+        "Projects": [
+            hierarchy_detector,
+            chatbot,
+            # youtube_downloader,
+            # audiobook,
+            log_parser,
+        ],
     },
 )
 
