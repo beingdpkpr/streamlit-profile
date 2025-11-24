@@ -237,7 +237,7 @@ uploaded_file = st.file_uploader("Upload a log file (csv)", type="csv")
 if uploaded_file:
     try:
         with st.spinner("🔍 Reading Logs"):
-            log_data = read_csv(uploaded_file)
+            log_data = read_csv(uploaded_file, on_bad_lines="warn")
         with st.spinner("🔍 Parsing Logs"):
             parser = LogParser(log_data)
             plugins = parser.parse()
