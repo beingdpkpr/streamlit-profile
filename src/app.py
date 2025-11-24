@@ -76,7 +76,7 @@ pg = st.navigation(
         "Info": [home, education, work, skills, certificates],
         "Projects": [
             hierarchy_detector,
-            chatbot,
+            # chatbot,
             # youtube_downloader,
             # audiobook,
             log_parser,
