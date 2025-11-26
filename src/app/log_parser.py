@@ -245,8 +245,8 @@ class LogParser:
         return read_secs, exec_secs, write_secs
 
 
-if __name__ == "__main__":
-    df = read_csv("Network Weekly Error Logs.Csv")
-    parser = LogParser(df)
-    test = parser.parse()
-    print(test[0]["Data"]["Message"])
+# if __name__ == "__main__":
+#     df = read_csv("Network Weekly Error Logs.Csv")
+#     parser = LogParser(df)
+#     test = parser.parse()
+#     print(test[0]["Data"]["Message"])
