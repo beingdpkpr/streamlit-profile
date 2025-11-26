@@ -1,4 +1,5 @@
 import re
+from typing import Hashable
 
 from pandas import DataFrame, to_datetime, isna, options, read_csv
 
@@ -11,6 +12,8 @@ class LogParser:
         self.logs: DataFrame = logs
         self.is_warn: bool = is_warn
         self.MESSAGE: str = "Message"
+        self.RId: str = "RId"
+        self.THREAD: str = "Thread"
         self.LEVEL: str = "Level"
         self.ERROR: str = "ERROR"
         self.WARN: str = "WARN"
@@ -50,12 +53,14 @@ class LogParser:
             "dataframe is missing",
             "Storing results back to memcache",
             "Finished Medium Weight script execution on",
+            "Writing output data to files / tables",
             r"Status of the (.+?) plugin run: (\w+)",
             "Total Rows:",
             "Name of measures uploaded:",
             "Summary :",
             "Ingestor Result:",
             "Total output rows processed",
+            "Time taken to upload",
             self._end_pattern,
             "Script did not complete successfully for ",
         ]
@@ -133,12 +138,13 @@ class LogParser:
         plugin_detail: list = []
         start_filter = self._get_start_filter(logs)
         end_filter = self._get_end_filter(logs)
-        print(start_filter[self.MESSAGE])
         # Create lookup dictionary for faster end matching
         end_messages = end_filter[self.MESSAGE].to_dict()
         used_end_indices = set()
         for start_idx, row in start_filter.iterrows():
             message = str(row[self.MESSAGE])
+            rid = row[self.RId]
+            thread = row[self.THREAD]
             plugin_name = self.extract_plugin_name(message)
 
             if not plugin_name:
@@ -166,7 +172,13 @@ class LogParser:
                 used_end_indices.add(end_idx)
                 time_taken_val = self.extract_time_taken(str(end_messages[end_idx]))
 
-                plugin_logs = logs[(logs.index >= start_idx) & (logs.index <= end_idx)]
+                plugin_logs = logs[
+                    (logs.index >= start_idx)
+                    & (logs.index <= end_idx)
+                    # & (logs[self.RId] == rid)
+                    # & (logs[self.THREAD] == thread)
+                ]
+                plugin_logs.to_csv("plugin_logs.csv")
                 if plugin_logs.empty:
                     print(f"No logs for: {plugin_name}.")
                     continue
@@ -208,6 +220,7 @@ class LogParser:
             "Storing results back to memcache",
             "Finished Medium Weight script execution on",
             r"Status of the (.+?) plugin run: (\w+)",
+            "Writing output data to files / tables",
         ]
         # Status of the SupplyPlan0600PostAnalytics_Inventory_Weekly_Post plugin run: ERROR
         read_mask = msgs.str.contains("|".join(map(re.escape, read_str)))
@@ -232,8 +245,8 @@ class LogParser:
         return read_secs, exec_secs, write_secs
 
 
-# if __name__ == "__main__":
-#     df = read_csv("Network Weekly Error Logs.Csv")
-#     parser = LogParser(df)
-#     test = parser.parse()
-#     print(test[0]["Data"]["Message"])
+if __name__ == "__main__":
+    df = read_csv("Network Weekly Error Logs.Csv")
+    parser = LogParser(df)
+    test = parser.parse()
+    print(test[0]["Data"]["Message"])

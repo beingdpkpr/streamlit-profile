@@ -1,27 +1,32 @@
 from statistics import mean
 
 import streamlit as st
-from pandas import read_csv, DataFrame
+
+from pandas import read_csv, DataFrame, options
 from app.log_parser import LogParser
 
 st.title("🫧 Log Parser For Plugins")
-
 
 uploaded_file = st.file_uploader("Upload a log file (csv)", type="csv")
 
 
 if uploaded_file:
     try:
-        with st.spinner("🔍 Reading Logs"):
-            log_data = read_csv(uploaded_file, on_bad_lines="warn")
-        with st.spinner("🔍 Parsing Logs"):
-            parser = LogParser(log_data)
-            plugins = parser.parse()
+        log_data = read_csv(uploaded_file, on_bad_lines="warn")
+        parser = LogParser(log_data)
+        plugins = parser.parse()
 
-        total_plugins = len(plugins)
-        failed_plugins = sum(d[parser.is_error] for d in plugins)
-        total_time = sum(d[parser.time_taken] for d in plugins)
-        avg_time = mean(d[parser.time_taken] for d in plugins)
+        try:
+            total_plugins = len(plugins)
+            failed_plugins = sum(d[parser.is_error] for d in plugins)
+            total_time = sum(d[parser.time_taken] for d in plugins)
+            avg_time = mean(d[parser.time_taken] for d in plugins)
+        except TypeError:
+            print(d[parser.is_error] for d in plugins)
+            total_plugins = 0
+            failed_plugins = 0
+            total_time = 0
+            avg_time = 0
 
         # Display summary metrics
         st.markdown("---")
@@ -87,6 +92,9 @@ if uploaded_file:
 
         st.markdown("---")
     except Exception as e:
+        import traceback
+
+        traceback.print_exc()
         st.error(f"❌ Failed to parse log: {e}")
 else:
     st.info("📁 Please upload a CSV log file to begin.")
