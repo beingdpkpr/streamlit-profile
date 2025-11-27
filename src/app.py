@@ -77,8 +77,8 @@ pg = st.navigation(
         "Projects": [
             hierarchy_detector,
             # chatbot,
-            # youtube_downloader,
-            # audiobook,
+            youtube_downloader,
+            audiobook,
             log_parser,
         ],
     },

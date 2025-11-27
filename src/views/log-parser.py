@@ -1,18 +1,31 @@
-from statistics import mean
-
 import streamlit as st
+import pandas as pd
 
-from pandas import read_csv, DataFrame, options
+from statistics import mean
 from app.log_parser import LogParser
+from app.time_it import timeit
+
 
 st.title("🫧 Log Parser For Plugins")
 
-uploaded_file = st.file_uploader("Upload a log file (csv)", type="csv")
 
+@timeit
+def read_log(_file):
+    data = pd.read_csv(
+        _file,
+        on_bad_lines="skip",
+        # low_memory=False,
+        engine="python",
+        dtype=str,
+    )
+    return data
+
+
+uploaded_file = st.file_uploader("Upload a log file (csv)", type="csv")
 
 if uploaded_file:
     try:
-        log_data = read_csv(uploaded_file, on_bad_lines="warn")
+        log_data = read_log(uploaded_file)
         parser = LogParser(log_data)
         plugins = parser.parse()
 
@@ -21,6 +34,7 @@ if uploaded_file:
             failed_plugins = sum(d[parser.is_error] for d in plugins)
             total_time = sum(d[parser.time_taken] for d in plugins)
             avg_time = mean(d[parser.time_taken] for d in plugins)
+
         except TypeError:
             print(d[parser.is_error] for d in plugins)
             total_plugins = 0
@@ -42,7 +56,7 @@ if uploaded_file:
         st.markdown("---")
         st.subheader(f"Plugin Summary")
         with st.expander(f"Plugin Summary", expanded=True):
-            df = DataFrame(plugins)
+            df = pd.DataFrame(plugins)
 
             st.dataframe(
                 df[

@@ -1,24 +1,31 @@
 import re
-from typing import Hashable
 
-from pandas import DataFrame, to_datetime, isna, options, read_csv
-
+from pandas import DataFrame, to_datetime, isna, options
 
 options.mode.chained_assignment = None
 
 
 class LogParser:
     def __init__(self, logs, is_warn: bool = False):
-        self.logs: DataFrame = logs
-        self.is_warn: bool = is_warn
         self.MESSAGE: str = "Message"
         self.RId: str = "RId"
         self.THREAD: str = "Thread"
         self.LEVEL: str = "Level"
+        self.TIMESTAMP: str = "Timestamp"
+
+        input_columns: list = [
+            self.RId,
+            self.THREAD,
+            self.LEVEL,
+            self.TIMESTAMP,
+            self.MESSAGE,
+        ]
+        # print(logs.columns)
+        self.logs: DataFrame = logs[input_columns]
+        self.is_warn: bool = is_warn
         self.ERROR: str = "ERROR"
         self.WARN: str = "WARN"
         self.DATA: str = "Data"
-        self.TIMESTAMP: str = "Timestamp"
         self.READ_TIME: str = "Read Time"
         self.EXEC_TIME: str = "User Script Time"
         self.WRITE_TIME: str = "Write Time"
@@ -38,6 +45,7 @@ class LogParser:
         # Cache filtered dataframes
         self._start_filter = None
         self._end_filter = None
+
         self.imp_messages: list[str] = [
             self._start_pattern,
             "Data Extractor Query:",
@@ -143,8 +151,8 @@ class LogParser:
         used_end_indices = set()
         for start_idx, row in start_filter.iterrows():
             message = str(row[self.MESSAGE])
-            rid = row[self.RId]
-            thread = row[self.THREAD]
+            # rid = row[self.RId]
+            # thread = row[self.THREAD]
             plugin_name = self.extract_plugin_name(message)
 
             if not plugin_name:
@@ -178,7 +186,6 @@ class LogParser:
                     # & (logs[self.RId] == rid)
                     # & (logs[self.THREAD] == thread)
                 ]
-                plugin_logs.to_csv("plugin_logs.csv")
                 if plugin_logs.empty:
                     print(f"No logs for: {plugin_name}.")
                     continue
@@ -245,8 +252,11 @@ class LogParser:
         return read_secs, exec_secs, write_secs
 
 
-# if __name__ == "__main__":
-#     df = read_csv("Network Weekly Error Logs.Csv")
-#     parser = LogParser(df)
-#     test = parser.parse()
-#     print(test[0]["Data"]["Message"])
+if __name__ == "__main__":
+    from pandas import read_csv
+
+    df = read_csv("log/Demand Netting.Csv")
+    parser = LogParser(df)
+    test = parser.parse()
+    print(test[0]["Data"]["Message"])
+    test[0]["Data"].to_csv("1.csv", index=False)
