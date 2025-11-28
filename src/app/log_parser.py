@@ -1,6 +1,7 @@
 import re
 
 from pandas import DataFrame, to_datetime, isna, options
+from app.time_it import timeit
 
 options.mode.chained_assignment = None
 
@@ -12,12 +13,14 @@ class LogParser:
         self.THREAD: str = "Thread"
         self.LEVEL: str = "Level"
         self.TIMESTAMP: str = "Timestamp"
+        self.SERVER: str = "Server"
 
         input_columns: list = [
             self.RId,
             self.THREAD,
             self.LEVEL,
             self.TIMESTAMP,
+            self.SERVER,
             self.MESSAGE,
         ]
         # print(logs.columns)
@@ -29,6 +32,8 @@ class LogParser:
         self.READ_TIME: str = "Read Time"
         self.EXEC_TIME: str = "User Script Time"
         self.WRITE_TIME: str = "Write Time"
+        self.OUTPUT_MEASURES: str = "Output Measures"
+        self.python_plugin_server: str = "PythonPlugin"
 
         self.plugin_name: str = "PluginName"
         self.start_index: str = "StartIndex"
@@ -46,7 +51,7 @@ class LogParser:
         self._start_filter = None
         self._end_filter = None
 
-        self.imp_messages: list[str] = [
+        self.filtered_log_statements: list[str] = [
             self._start_pattern,
             "Data Extractor Query:",
             "Using O9SparkExecutor executor with",
@@ -63,16 +68,17 @@ class LogParser:
             "Finished Medium Weight script execution on",
             "Writing output data to files / tables",
             r"Status of the (.+?) plugin run: (\w+)",
-            "Total Rows:",
+            # "Total Rows:",
             "Name of measures uploaded:",
-            "Summary :",
-            "Ingestor Result:",
+            # "Summary :",
+            # "Ingestor Result:",
             "Total output rows processed",
             "Time taken to upload",
             self._end_pattern,
             "Script did not complete successfully for ",
         ]
 
+    @timeit
     def parse(self):
         """Parse logs."""
         relevant_logs = self.filter_relevant_logs()
@@ -111,11 +117,12 @@ class LogParser:
         except (IndexError, ValueError):
             return None
 
+    @timeit
     def filter_relevant_logs(self) -> DataFrame:
         """Filter relevant logs."""
         # Build combined regex pattern
         pattern_parts = []
-        for msg in self.imp_messages:
+        for msg in self.filtered_log_statements:
             if isinstance(msg, re.Pattern):
                 pattern_parts.append(msg.pattern)
             else:
@@ -128,19 +135,18 @@ class LogParser:
         important_pattern = re.compile("|".join(pattern_parts), re.IGNORECASE)
 
         # Single filter: errors OR important messages
+        mask = (
+            (self.logs[self.LEVEL] == self.ERROR)
+            | (self.logs[self.MESSAGE].str.contains(important_pattern, na=False))
+            | (self.logs[self.SERVER] == self.python_plugin_server)
+        )
         if self.is_warn:
-            mask = (
-                (self.logs[self.LEVEL] == self.ERROR)
-                | (self.logs[self.MESSAGE].str.contains(important_pattern, na=False))
-                | (self.logs[self.LEVEL] == self.WARN)
-            )
-        else:
-            mask = (self.logs[self.LEVEL] == self.ERROR) | (
-                self.logs[self.MESSAGE].str.contains(important_pattern, na=False)
-            )
+            mask = mask | (self.logs[self.LEVEL] == self.WARN)
+
         relevant_logs = self.logs[mask].copy()
         return relevant_logs
 
+    @timeit
     def find_all_plugins(self, logs) -> list:
         """Find all plugin execution sessions."""
         plugin_detail: list = []
@@ -151,7 +157,7 @@ class LogParser:
         used_end_indices = set()
         for start_idx, row in start_filter.iterrows():
             message = str(row[self.MESSAGE])
-            # rid = row[self.RId]
+            rid = row[self.RId]
             # thread = row[self.THREAD]
             plugin_name = self.extract_plugin_name(message)
 
@@ -164,6 +170,7 @@ class LogParser:
             plugin_logs = DataFrame()
             is_error = False
             read_secs, exec_secs, write_secs = None, None, None
+            output_measures = ""
             # Vectorized filtering for candidate ends
             plugin_pattern = re.escape(plugin_name)
             candidate_ends = end_filter[
@@ -183,7 +190,7 @@ class LogParser:
                 plugin_logs = logs[
                     (logs.index >= start_idx)
                     & (logs.index <= end_idx)
-                    # & (logs[self.RId] == rid)
+                    & (logs[self.RId] == rid)
                     # & (logs[self.THREAD] == thread)
                 ]
                 if plugin_logs.empty:
@@ -193,6 +200,7 @@ class LogParser:
                     True if self.ERROR in plugin_logs[self.LEVEL].unique() else False
                 )
                 read_secs, exec_secs, write_secs = self.find_plugin_times(plugin_logs)
+                output_measures = self.find_output_measures(plugin_logs)
 
             plugin_detail.append(
                 {
@@ -201,19 +209,39 @@ class LogParser:
                     self.end_index: end_idx,
                     self.time_taken: time_taken_val,
                     self.is_error: is_error,
-                    self.DATA: plugin_logs,
+                    self.DATA: plugin_logs.drop_duplicates(),
                     self.READ_TIME: read_secs,
                     self.EXEC_TIME: exec_secs,
                     self.WRITE_TIME: write_secs,
+                    self.OUTPUT_MEASURES: output_measures,
                 }
             )
         return plugin_detail
 
+    def find_output_measures(self, logs) -> str:
+        """Find output measurements."""
+        output_measures: list = []
+        measure_str = ["Name of measures uploaded:"]
+        msgs = logs[self.MESSAGE]
+        mask = msgs.str.contains("|".join(map(re.escape, measure_str)))
+        out_measures_str = logs.loc[mask, self.MESSAGE].unique()
+        for measure in out_measures_str:
+            measure = (
+                measure.replace("Name of measures uploaded:", "").strip().split(",")
+            )
+            output_measures += measure
+
+        return ", ".join(output_measures)
+
+    @timeit
     def find_plugin_times(self, logs):
         """Find all plugin execution sessions."""
         logs[self.TIMESTAMP] = to_datetime(logs[self.TIMESTAMP])
-        first_ts = logs[self.TIMESTAMP].iloc[0]
-        last_ts = logs[self.TIMESTAMP].iloc[-1]
+        ts = logs[self.TIMESTAMP]
+
+        first_ts = ts.iat[0]
+        last_ts = ts.iat[-1]
+
         msgs = logs[self.MESSAGE]
         read_str = [
             "Starting user code execution",
@@ -229,18 +257,18 @@ class LogParser:
             r"Status of the (.+?) plugin run: (\w+)",
             "Writing output data to files / tables",
         ]
-        # Status of the SupplyPlan0600PostAnalytics_Inventory_Weekly_Post plugin run: ERROR
         read_mask = msgs.str.contains("|".join(map(re.escape, read_str)))
         exec_mask = msgs.str.contains("|".join(map(re.escape, exec_str)))
-        # Pick FIRST occurrence
-        # print(first_ts)
-        # print("-----------")
-        # print(logs.loc[read_mask, (self.TIMESTAMP, self.MESSAGE)])
-        read_time = logs.loc[read_mask, self.TIMESTAMP].min()
-        exec_time = logs.loc[exec_mask, self.TIMESTAMP].min()
 
-        read_time = None if isna(read_time) else read_time
-        exec_time = None if isna(exec_time) else exec_time
+        # read_time = logs.loc[read_mask, self.TIMESTAMP].min()
+        # exec_time = logs.loc[exec_mask, self.TIMESTAMP].min()
+        read_time = ts[read_mask].min()
+        exec_time = ts[exec_mask].min()
+
+        if isna(read_time):
+            read_time = None
+        if isna(exec_time):
+            exec_time = None
 
         # Convert differences to seconds safely
         read_secs = (read_time - first_ts).total_seconds() if read_time else None
@@ -252,11 +280,11 @@ class LogParser:
         return read_secs, exec_secs, write_secs
 
 
-if __name__ == "__main__":
-    from pandas import read_csv
-
-    df = read_csv("log/Demand Netting.Csv")
-    parser = LogParser(df)
-    test = parser.parse()
-    print(test[0]["Data"]["Message"])
-    test[0]["Data"].to_csv("1.csv", index=False)
+# if __name__ == "__main__":
+#     from pandas import read_csv
+#
+#     df = read_csv("log/network spark logs.Csv")
+#     parser = LogParser(df)
+#     test = parser.parse()
+#     print(test[0]["Data"]["Message"])
+#     test[0]["Data"].to_csv("1.csv", index=False)

@@ -67,6 +67,7 @@ if uploaded_file:
                         parser.EXEC_TIME,
                         parser.WRITE_TIME,
                         parser.time_taken,
+                        parser.OUTPUT_MEASURES,
                     ]
                 ]
             )
