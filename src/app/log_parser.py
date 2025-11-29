@@ -14,13 +14,13 @@ class LogParser:
         self.LEVEL: str = "Level"
         self.TIMESTAMP: str = "Timestamp"
         self.SERVER: str = "Server"
-        self.LOGGER: str = "Logger"
+        # self.LOGGER: str = "Logger"
 
         input_columns: list = [
             self.RId,
             self.THREAD,
             self.LEVEL,
-            self.LOGGER,
+            # self.LOGGER,
             self.TIMESTAMP,
             self.SERVER,
             self.MESSAGE,
@@ -155,7 +155,9 @@ class LogParser:
 
     # @timeit
     def parse_computations(self):
-        print("Getting Computations...")
+        INVOCATIONS: str = "Invocations Count"
+        EXECUTIONS: str = "Executions Count"
+        NO_OPS: str = "No-Operations Count"
         computation_str = "Computation execution time"
         computation_logs = self.logs[
             (
@@ -179,11 +181,33 @@ class LogParser:
             )
             .str.strip()
         )
-        # print(computation_logs.columns)
-        # print(computation_logs[[self.MESSAGE, self.time_taken]].to_csv())
-
+        computation_logs["index"] = computation_logs.index
+        prev_index = computation_logs.index - 1
+        prev_logs = self.logs.loc[prev_index]
+        prev_logs["index"] = prev_index + 1
+        computation_logs = computation_logs.merge(
+            prev_logs[["index", self.MESSAGE]],
+            on="index",
+            how="left",
+            suffixes=("", "_end"),
+        )
+        computation_logs[[INVOCATIONS, EXECUTIONS, NO_OPS]] = computation_logs[
+            f"{self.MESSAGE}_end"
+        ].str.extract(
+            r"invocations:\s*(\d+);\s*executions:\s*(\d+);\s*non-null no ops:\s*(\d+)",
+            flags=re.IGNORECASE,
+        )
+        computation_logs[[self.MESSAGE, f"{self.MESSAGE}_end"]].to_csv("1.csv")
         return computation_logs[
-            [self.RId, self.THREAD, self.MESSAGE, self.time_taken]
+            [
+                self.RId,
+                self.THREAD,
+                self.MESSAGE,
+                self.time_taken,
+                INVOCATIONS,
+                EXECUTIONS,
+                NO_OPS,
+            ]
         ].sort_values(by=[self.time_taken], ascending=False)
 
     def _get_start_filter(self, logs) -> DataFrame:
@@ -381,14 +405,14 @@ class LogParser:
         return read_secs, exec_secs, write_secs
 
 
-if __name__ == "__main__":
-    from pandas import read_csv
-
-    df1 = read_csv("log/network spark logs.Csv")
-    parser = LogParser(df1)
-    #     test = parser.parse_plugins()
-    #     print(test[0]["Data"]["Message"])
-    #     test[0]["Data"].to_csv("1.csv", index=False)
-    #     test = parser.parse_queries()
-    test = parser.parse_computations()
-    print(test)
+# if __name__ == "__main__":
+#     from pandas import read_csv
+#
+#     df1 = read_csv("log/network spark logs.Csv")
+#     parser = LogParser(df1)
+#     #     test = parser.parse_plugins()
+#     #     print(test[0]["Data"]["Message"])
+#     #     test[0]["Data"].to_csv("1.csv", index=False)
+#     #     test = parser.parse_queries()
+#     test = parser.parse_computations()
+#     print(test)
