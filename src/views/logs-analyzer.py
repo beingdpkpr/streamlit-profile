@@ -25,8 +25,10 @@ def read_log(_file):
 uploaded_file = st.file_uploader("Upload a log file (csv)", type="csv")
 
 if uploaded_file:
-    # plugin_tab, queries_tab = st.tabs(["Plugins", "Queries"])
-    queries_tab, plugin_tab = st.tabs(["Queries", "Plugins"])
+    # plugin_tab, queries_tab, computations_tab = st.tabs(["Plugins", "Queries", "Computations])
+    queries_tab, plugin_tab, computations_tab = st.tabs(
+        ["Queries", "Plugins", "Computations"]
+    )
     try:
         log_data = read_log(uploaded_file)
         parser = LogParser(log_data)
@@ -125,13 +127,24 @@ if uploaded_file:
             queries = parser.parse_queries()
             total_queries = len(queries)
             queries_above_5min = len(queries[queries[parser.time_taken] > 300])
+            total_queries_time = sum(queries[parser.time_taken])
+            avg_query_time = total_queries_time / total_queries
             st.markdown("---")
             st.subheader(f"Summary")
-            col1, col2 = st.columns(2)
-            with col1:
+            q_total, q_long, q_total_time, q_avg = st.columns(4)
+            with q_total:
                 st.metric("📊 Total Queries", total_queries)
-            with col2:
+            with q_long:
                 st.metric("⏱️ Long Queries (above 5 mins)", queries_above_5min)
+            with q_total_time:
+                st.metric(
+                    "⏱️ Total Time",
+                    f"{total_queries_time:.2f}s" if total_queries_time else "N/A",
+                )
+            with q_avg:
+                st.metric(
+                    "⚡ Avg Time", f"{avg_query_time:.2f}s" if avg_query_time else "N/A"
+                )
             if total_queries > 0:
                 st.subheader(f"Queries Details")
                 st.dataframe(queries)
@@ -140,5 +153,31 @@ if uploaded_file:
             st.error(f"❌ Failed to parse log: {e}")
             exit(1)
         st.markdown("---")
+    with computations_tab:
+        computations = parser.parse_computations()
+        total_computations = len(computations)
+        total_computations_time = sum(computations[parser.time_taken])
+        avg_comp_time = total_computations_time / total_computations
+        st.markdown("---")
+        st.subheader(f"Summary")
+        c_total, c_total_time, c_avg = st.columns(3)
+        with c_total:
+            st.metric("📊 Total Computations", total_computations)
+        with c_total_time:
+            st.metric(
+                "⏱️ Total Time",
+                f"{total_computations_time:.2f}s" if total_computations_time else "N/A",
+            )
+        with c_avg:
+            st.metric(
+                "⚡ Avg Time", f"{avg_comp_time:.2f}s" if avg_comp_time else "N/A"
+            )
+        if total_computations > 0:
+            st.subheader(f"Computations Details")
+            st.dataframe(computations)
+
+        st.markdown("---")
+
+
 else:
     st.info("📁 Please upload a CSV log file to begin.")

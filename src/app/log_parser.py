@@ -1,7 +1,6 @@
 import re
 
 from pandas import DataFrame, to_datetime, isna, options, merge
-from dateutil import tz
 from app.time_it import timeit
 
 options.mode.chained_assignment = None
@@ -15,11 +14,13 @@ class LogParser:
         self.LEVEL: str = "Level"
         self.TIMESTAMP: str = "Timestamp"
         self.SERVER: str = "Server"
+        self.LOGGER: str = "Logger"
 
         input_columns: list = [
             self.RId,
             self.THREAD,
             self.LEVEL,
+            self.LOGGER,
             self.TIMESTAMP,
             self.SERVER,
             self.MESSAGE,
@@ -86,7 +87,7 @@ class LogParser:
         # print(relevant_logs[self.MESSAGE])
         return self.find_all_plugins(relevant_logs)
 
-    @timeit
+    # @timeit
     def parse_queries(self):
         query_received = "Query Received: {"
         query_finished = "CPU TIME: {"
@@ -151,6 +152,39 @@ class LogParser:
         )
 
         return output.sort_values(by=[self.time_taken], ascending=False)
+
+    # @timeit
+    def parse_computations(self):
+        print("Getting Computations...")
+        computation_str = "Computation execution time"
+        computation_logs = self.logs[
+            (
+                self.logs[self.MESSAGE].str.contains(
+                    computation_str, regex=False, na=False
+                )
+            )
+        ]
+        computation_logs[self.time_taken] = (
+            computation_logs[self.MESSAGE]
+            .str.extract(r"Computation execution time:\s*([\d.]+)\s*s")
+            .astype(float)
+        )
+
+        computation_logs[self.MESSAGE] = (
+            computation_logs[self.MESSAGE]
+            .str.replace(
+                r"(Finished computation \[\d+\]\. Query :|Computation execution time:\s*[\d.]+\s*s)",
+                "",
+                regex=True,
+            )
+            .str.strip()
+        )
+        # print(computation_logs.columns)
+        # print(computation_logs[[self.MESSAGE, self.time_taken]].to_csv())
+
+        return computation_logs[
+            [self.RId, self.THREAD, self.MESSAGE, self.time_taken]
+        ].sort_values(by=[self.time_taken], ascending=False)
 
     def _get_start_filter(self, logs) -> DataFrame:
         """Cache and return start filter."""
@@ -347,13 +381,14 @@ class LogParser:
         return read_secs, exec_secs, write_secs
 
 
-# if __name__ == "__main__":
-#     from pandas import read_csv
-#
-#     df1 = read_csv("log/network spark logs.Csv")
-#     parser = LogParser(df1)
-#     test = parser.parse_plugins()
-#     print(test[0]["Data"]["Message"])
-#     test[0]["Data"].to_csv("1.csv", index=False)
-#     test = parser.parse_queries()
-#     print(test)
+if __name__ == "__main__":
+    from pandas import read_csv
+
+    df1 = read_csv("log/network spark logs.Csv")
+    parser = LogParser(df1)
+    #     test = parser.parse_plugins()
+    #     print(test[0]["Data"]["Message"])
+    #     test[0]["Data"].to_csv("1.csv", index=False)
+    #     test = parser.parse_queries()
+    test = parser.parse_computations()
+    print(test)
