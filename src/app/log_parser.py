@@ -141,8 +141,8 @@ class LogParser:
 
         output = DataFrame(
             {
-                self.RId: merged[self.RId],
-                self.THREAD: merged[self.THREAD],
+                # self.RId: merged[self.RId],
+                # self.THREAD: merged[self.THREAD],
                 self.MESSAGE: merged[self.MESSAGE],
                 start_time_header: merged[start_time_header],
                 end_time_header: merged[end_time_header],
@@ -199,8 +199,8 @@ class LogParser:
         )
         return computation_logs[
             [
-                self.RId,
-                self.THREAD,
+                # self.RId,
+                # self.THREAD,
                 self.MESSAGE,
                 self.time_taken,
                 INVOCATIONS,
