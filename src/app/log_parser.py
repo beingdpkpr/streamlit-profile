@@ -197,7 +197,6 @@ class LogParser:
             r"invocations:\s*(\d+);\s*executions:\s*(\d+);\s*non-null no ops:\s*(\d+)",
             flags=re.IGNORECASE,
         )
-        computation_logs[[self.MESSAGE, f"{self.MESSAGE}_end"]].to_csv("1.csv")
         return computation_logs[
             [
                 self.RId,
