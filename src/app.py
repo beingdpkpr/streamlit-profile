@@ -65,9 +65,9 @@ audiobook = st.Page(
 )
 
 log_parser = st.Page(
-    title="Log Parser",
+    title="Logs Analyzer",
     icon="🫧",
-    page="views/log-parser.py",
+    page="views/logs-analyzer.py",
 )
 
 # Navigation Configuration

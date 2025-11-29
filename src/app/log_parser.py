@@ -1,6 +1,7 @@
 import re
 
-from pandas import DataFrame, to_datetime, isna, options
+from pandas import DataFrame, to_datetime, isna, options, merge
+from dateutil import tz
 from app.time_it import timeit
 
 options.mode.chained_assignment = None
@@ -78,12 +79,75 @@ class LogParser:
             "Script did not complete successfully for ",
         ]
 
-    @timeit
-    def parse(self):
+    # @timeit
+    def parse_plugins(self):
         """Parse logs."""
         relevant_logs = self.filter_relevant_logs()
         # print(relevant_logs[self.MESSAGE])
         return self.find_all_plugins(relevant_logs)
+
+    @timeit
+    def parse_queries(self):
+        query_received = "Query Received: {"
+        query_finished = "CPU TIME: {"
+        duration_sec: str = "Execution Time (Secs)"
+        duration_mm_ss: str = "Execution Time (mm:ss)"
+        unique_id: str = "unique_id"
+        start_time_header: str = "Start Executions Time"
+        end_time_header: str = "End Executions Time"
+
+        msgs = self.logs[self.MESSAGE]
+
+        # --- Filter start and end logs (vectorized) ---
+        start_logs = self.logs[msgs.str.contains(query_received, regex=False, na=False)]
+        end_logs = self.logs[msgs.str.contains(query_finished, regex=False, na=False)]
+
+        start_logs = start_logs.assign(
+            unique_id=start_logs[self.MESSAGE].str.split(":", n=2).str[1]
+        )
+        end_split = end_logs[self.MESSAGE].str.split(":", n=3)
+        end_logs = end_logs.assign(
+            unique_id=end_split.str[1],
+            cpu_ms_raw=end_split.str[2].str.replace("ms", "").str.strip(),
+        )
+        end_logs[duration_sec] = end_logs["cpu_ms_raw"].astype(float) / 1000
+        # --- Join start and end logs on unique_id ---
+        merged = merge(
+            start_logs,
+            end_logs[[unique_id, self.TIMESTAMP, duration_sec]],
+            on=unique_id,
+            how="left",
+            suffixes=("", "_end"),
+        )
+        # --- Clean query text (vectorized) ---
+        merged[self.MESSAGE] = (
+            merged[self.MESSAGE]
+            .str.replace(r"Query Received: {.*}:", "", regex=True)
+            .str.replace("^", "", regex=False)
+            .str.slice(0, 4000)
+            .str.strip()
+        )
+        merged[duration_mm_ss] = (
+            (merged[duration_sec] // 60).astype(int).astype(str).str.zfill(2)
+            + ":"
+            + (merged[duration_sec] % 60).round().astype(int).astype(str).str.zfill(2)
+        )
+        merged[start_time_header] = to_datetime(merged[self.TIMESTAMP])
+        merged[end_time_header] = to_datetime(merged[self.TIMESTAMP + "_end"])
+
+        output = DataFrame(
+            {
+                self.RId: merged[self.RId],
+                self.THREAD: merged[self.THREAD],
+                self.MESSAGE: merged[self.MESSAGE],
+                start_time_header: merged[start_time_header],
+                end_time_header: merged[end_time_header],
+                duration_sec: merged[duration_sec].round(4),
+                duration_mm_ss: merged[duration_mm_ss],
+            }
+        )
+
+        return output.sort_values(by=[duration_sec], ascending=False)
 
     def _get_start_filter(self, logs) -> DataFrame:
         """Cache and return start filter."""
@@ -117,7 +181,7 @@ class LogParser:
         except (IndexError, ValueError):
             return None
 
-    @timeit
+    # @timeit
     def filter_relevant_logs(self) -> DataFrame:
         """Filter relevant logs."""
         # Build combined regex pattern
@@ -146,7 +210,7 @@ class LogParser:
         relevant_logs = self.logs[mask].copy()
         return relevant_logs
 
-    @timeit
+    # @timeit
     def find_all_plugins(self, logs) -> list:
         """Find all plugin execution sessions."""
         plugin_detail: list = []
@@ -233,7 +297,7 @@ class LogParser:
 
         return ", ".join(output_measures)
 
-    @timeit
+    # @timeit
     def find_plugin_times(self, logs):
         """Find all plugin execution sessions."""
         logs[self.TIMESTAMP] = to_datetime(logs[self.TIMESTAMP])
@@ -280,11 +344,13 @@ class LogParser:
         return read_secs, exec_secs, write_secs
 
 
-# if __name__ == "__main__":
-#     from pandas import read_csv
-#
-#     df = read_csv("log/network spark logs.Csv")
-#     parser = LogParser(df)
-#     test = parser.parse()
-#     print(test[0]["Data"]["Message"])
-#     test[0]["Data"].to_csv("1.csv", index=False)
+if __name__ == "__main__":
+    from pandas import read_csv
+
+    df1 = read_csv("log/network spark logs.Csv")
+    parser = LogParser(df1)
+    # test = parser.parse_plugins()
+    # print(test[0]["Data"]["Message"])
+    # test[0]["Data"].to_csv("1.csv", index=False)
+    test = parser.parse_queries()
+    print(test)

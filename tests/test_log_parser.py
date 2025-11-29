@@ -84,7 +84,7 @@ def test_find_all_plugins(sample_plugin_logs):
 
 def test_parse_end_to_end(sample_plugin_logs):
     parser = LogParser(sample_plugin_logs)
-    result = parser.parse()
+    result = parser.parse_plugins()
 
     assert len(result) == 1
     p = result[0]

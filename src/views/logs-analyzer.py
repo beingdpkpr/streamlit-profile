@@ -2,11 +2,12 @@ import streamlit as st
 import pandas as pd
 
 from statistics import mean
+
 from app.log_parser import LogParser
 from app.time_it import timeit
 
 
-st.title("🫧 Log Parser For Plugins")
+st.title("🫧 Logs Analyzer")
 
 
 @timeit
@@ -24,10 +25,16 @@ def read_log(_file):
 uploaded_file = st.file_uploader("Upload a log file (csv)", type="csv")
 
 if uploaded_file:
+    plugin_tab, queries_tab = st.tabs(["Plugins", "Queries"])
     try:
         log_data = read_log(uploaded_file)
         parser = LogParser(log_data)
-        plugins = parser.parse()
+    except Exception as e:
+        st.error(f"❌ Failed to parse log: {e}")
+        exit(1)
+
+    with plugin_tab:
+        plugins = parser.parse_plugins()
 
         try:
             total_plugins = len(plugins)
@@ -44,20 +51,22 @@ if uploaded_file:
 
         # Display summary metrics
         st.markdown("---")
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
+        st.subheader(f"Summary")
+        total_plugin, failed_plugin, total_time_header, avg_time_header = st.columns(4)
+        with total_plugin:
             st.metric("📊 Total Plugins", total_plugins)
-        with col2:
+        with failed_plugin:
             st.metric("⛔ Failed", failed_plugins)
-        with col3:
+        with total_time_header:
             st.metric("⏱️ Total Time", f"{total_time:.2f}s" if total_time else "N/A")
-        with col4:
+        with avg_time_header:
             st.metric("⚡ Avg Time", f"{avg_time:.2f}s" if avg_time else "N/A")
         st.markdown("---")
-        st.subheader(f"Plugin Summary")
-        with st.expander(f"Plugin Summary", expanded=True):
-            df = pd.DataFrame(plugins)
 
+        if len(plugins) > 0:
+            st.subheader(f"Plugin Details")
+            # with st.expander(f"Plugin Summary", expanded=True):
+            df = pd.DataFrame(plugins)
             st.dataframe(
                 df[
                     [
@@ -69,15 +78,17 @@ if uploaded_file:
                         parser.time_taken,
                         parser.OUTPUT_MEASURES,
                     ]
-                ]
+                ].sort_values(by=[parser.time_taken], ascending=False)
             )
-        st.markdown("---")
+            st.markdown("---")
 
         st.subheader(f"Plugin With Errors")
-        for plugin in plugins:
-            if plugin[parser.is_error]:
-                with st.expander(f"{plugin[parser.plugin_name]}", expanded=True):
-                    df = plugin[parser.DATA][
+        all_plugin_success: bool = True
+        for plugin_tab in plugins:
+            if plugin_tab[parser.is_error]:
+                all_plugin_success = False
+                with st.expander(f"{plugin_tab[parser.plugin_name]}", expanded=True):
+                    df = plugin_tab[parser.DATA][
                         [parser.TIMESTAMP, parser.LEVEL, parser.MESSAGE]
                     ]
 
@@ -94,22 +105,28 @@ if uploaded_file:
 
                     styled = df.style.apply(highlight_row, axis=1)
                     st.dataframe(styled)
-
-        st.subheader(f"Successful Plugins")
-        for plugin in plugins:
-            if not plugin[parser.is_error]:
-                with st.expander(f"{plugin[parser.plugin_name]}", expanded=False):
-                    st.dataframe(
-                        plugin[parser.DATA][
-                            [parser.TIMESTAMP, parser.LEVEL, parser.MESSAGE]
-                        ]
-                    )
+        if not all_plugin_success:
+            st.subheader(f"Successful Plugins")
+            for plugin_tab in plugins:
+                if not plugin_tab[parser.is_error]:
+                    with st.expander(
+                        f"{plugin_tab[parser.plugin_name]}", expanded=False
+                    ):
+                        st.dataframe(
+                            plugin_tab[parser.DATA][
+                                [parser.TIMESTAMP, parser.LEVEL, parser.MESSAGE]
+                            ]
+                        )
 
         st.markdown("---")
-    except Exception as e:
-        import traceback
+    with queries_tab:
+        try:
+            queries = parser.parse_queries()
+            st.dataframe(queries)
 
-        traceback.print_exc()
-        st.error(f"❌ Failed to parse log: {e}")
+        except Exception as e:
+            st.error(f"❌ Failed to parse log: {e}")
+            exit(1)
+        st.markdown("---")
 else:
     st.info("📁 Please upload a CSV log file to begin.")
