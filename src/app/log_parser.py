@@ -39,7 +39,7 @@ class LogParser:
         self.plugin_name: str = "PluginName"
         self.start_index: str = "StartIndex"
         self.end_index: str = "EndIndex"
-        self.time_taken: str = "TimeTaken (Seconds)"
+        self.time_taken: str = "Execution Time (Seconds)"
         self.is_error: str = "IsError"
 
         self._start_pattern = re.compile(
@@ -90,7 +90,6 @@ class LogParser:
     def parse_queries(self):
         query_received = "Query Received: {"
         query_finished = "CPU TIME: {"
-        duration_sec: str = "Execution Time (Secs)"
         duration_mm_ss: str = "Execution Time (mm:ss)"
         unique_id: str = "unique_id"
         start_time_header: str = "Start Executions Time"
@@ -110,11 +109,11 @@ class LogParser:
             unique_id=end_split.str[1],
             cpu_ms_raw=end_split.str[2].str.replace("ms", "").str.strip(),
         )
-        end_logs[duration_sec] = end_logs["cpu_ms_raw"].astype(float) / 1000
+        end_logs[self.time_taken] = end_logs["cpu_ms_raw"].astype(float) / 1000
         # --- Join start and end logs on unique_id ---
         merged = merge(
             start_logs,
-            end_logs[[unique_id, self.TIMESTAMP, duration_sec]],
+            end_logs[[unique_id, self.TIMESTAMP, self.time_taken]],
             on=unique_id,
             how="left",
             suffixes=("", "_end"),
@@ -128,9 +127,13 @@ class LogParser:
             .str.strip()
         )
         merged[duration_mm_ss] = (
-            (merged[duration_sec] // 60).astype(int).astype(str).str.zfill(2)
+            (merged[self.time_taken] // 60).astype(int).astype(str).str.zfill(2)
             + ":"
-            + (merged[duration_sec] % 60).round().astype(int).astype(str).str.zfill(2)
+            + (merged[self.time_taken] % 60)
+            .round()
+            .astype(int)
+            .astype(str)
+            .str.zfill(2)
         )
         merged[start_time_header] = to_datetime(merged[self.TIMESTAMP])
         merged[end_time_header] = to_datetime(merged[self.TIMESTAMP + "_end"])
@@ -142,12 +145,12 @@ class LogParser:
                 self.MESSAGE: merged[self.MESSAGE],
                 start_time_header: merged[start_time_header],
                 end_time_header: merged[end_time_header],
-                duration_sec: merged[duration_sec].round(4),
+                self.time_taken: merged[self.time_taken].round(4),
                 duration_mm_ss: merged[duration_mm_ss],
             }
         )
 
-        return output.sort_values(by=[duration_sec], ascending=False)
+        return output.sort_values(by=[self.time_taken], ascending=False)
 
     def _get_start_filter(self, logs) -> DataFrame:
         """Cache and return start filter."""
@@ -344,13 +347,13 @@ class LogParser:
         return read_secs, exec_secs, write_secs
 
 
-if __name__ == "__main__":
-    from pandas import read_csv
-
-    df1 = read_csv("log/network spark logs.Csv")
-    parser = LogParser(df1)
-    # test = parser.parse_plugins()
-    # print(test[0]["Data"]["Message"])
-    # test[0]["Data"].to_csv("1.csv", index=False)
-    test = parser.parse_queries()
-    print(test)
+# if __name__ == "__main__":
+#     from pandas import read_csv
+#
+#     df1 = read_csv("log/network spark logs.Csv")
+#     parser = LogParser(df1)
+#     test = parser.parse_plugins()
+#     print(test[0]["Data"]["Message"])
+#     test[0]["Data"].to_csv("1.csv", index=False)
+#     test = parser.parse_queries()
+#     print(test)

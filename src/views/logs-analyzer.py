@@ -25,7 +25,8 @@ def read_log(_file):
 uploaded_file = st.file_uploader("Upload a log file (csv)", type="csv")
 
 if uploaded_file:
-    plugin_tab, queries_tab = st.tabs(["Plugins", "Queries"])
+    # plugin_tab, queries_tab = st.tabs(["Plugins", "Queries"])
+    queries_tab, plugin_tab = st.tabs(["Queries", "Plugins"])
     try:
         log_data = read_log(uploaded_file)
         parser = LogParser(log_data)
@@ -122,7 +123,18 @@ if uploaded_file:
     with queries_tab:
         try:
             queries = parser.parse_queries()
-            st.dataframe(queries)
+            total_queries = len(queries)
+            queries_above_5min = len(queries[queries[parser.time_taken] > 300])
+            st.markdown("---")
+            st.subheader(f"Summary")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("📊 Total Queries", total_queries)
+            with col2:
+                st.metric("⏱️ Long Queries (above 5 mins)", queries_above_5min)
+            if total_queries > 0:
+                st.subheader(f"Queries Details")
+                st.dataframe(queries)
 
         except Exception as e:
             st.error(f"❌ Failed to parse log: {e}")
